@@ -1,6 +1,7 @@
 //require('dotenv').config({path: './env'})
 import dotenv from "dotenv";
 import connectDB from "./db/index.js";
+import { app } from "./app.js";
 
 dotenv.config({
   //path: './.env' → means you are telling dotenv to look for a file literally named .env ,.
@@ -17,7 +18,7 @@ connectDB()  //since it is async method it will return a promise, so handle with
       //promise will either be resolve or will be reject
 
       app.on("error", (error) => {
-        console.log("Server level error: ", error);
+        console.log("❌ Server level error: ", error);
         throw error;
       });
 
@@ -49,12 +50,12 @@ connectDB()  //since it is async method it will return a promise, so handle with
 
       app.listen(process.env.PORT || 8000, () => {
         //Now the server will listen to the database via port 8000 || process.env.PORT
-        console.log(`Server is running at port : ${process.env.PORT}`);
+        console.log(`✅ Server is running at port : ${process.env.PORT}`);
       });
     })  
     .catch((err) => {
       //.then if promise resolve & .catch if promise reject, i.e resolve hota hai toh .then() handle karega, & reject hota hai toh .catch() handel karega.
-        console.log("MongoDB connection Failed !!! ", err);
+        console.log("❌ MongoDB connection Failed !!! ", err);
     })  
 
 
