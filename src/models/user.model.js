@@ -54,7 +54,7 @@ userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();  //if not modified move ahead
                                                     //if modified encrypt it
 
-  this.password = bcrypt.hash(this.password, 10)
+  this.password = await bcrypt.hash(this.password, 10)
   next()
 })
 
@@ -113,4 +113,4 @@ The result is the Signature (third part of JWT, zzzzz).*/
 
 
  
-export const User = mongoose.model("User", userSchema);
+export const User = mongoose.model("User", userSchema); //This "User" directly interacts with the database
