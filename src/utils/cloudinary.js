@@ -1,4 +1,5 @@
-import { v2 as cloudinary } from "cloudinary"
+import { v2 as cloudinary } from "cloudinary"; // ✅ correct
+
 import fs from "fs"
 
 
@@ -22,7 +23,9 @@ const uploadOnCloudinary = async (localFilePath) => {
       console.log("file is uploaded on cloudinary ", response.url);
 
       // Remove the local file after successful upload
-      fs.unlinkSync(localFilePath);
+      if (fs.existsSync(localFilePath)) {
+        fs.unlinkSync(localFilePath);
+      }
 
       return response;  //It will return an object which conations a lot of info like size,url,type & etc..
                           //It is returning this response object to the  DB/Frontend
@@ -35,9 +38,11 @@ const uploadOnCloudinary = async (localFilePath) => {
       //console.error("Error uploading file to Cloudinary:", error);
       return null;
 
+
       
     }
 }
+
 
 export { uploadOnCloudinary };
 

@@ -1,20 +1,22 @@
 import { Router } from "express"
-import { registerUser } from "../controllers/user.controller.js";
-import {upload} from "../middlewares/multer.middleware.js"
+import { registerUser } from "../controllers/user.controller.js"
+import { upload } from "../middlewares/multer.middleware.js"
 
 const router = Router();
-
-router.route("/register").post(
-    upload.fields([
-        {
-            name: "avatar",
-            maxCount: 1
-        },
-        {
-            name: "cover image",
-            maxCount:1
-        }
-]) ,registerUser)  //As soon as you hit /register, then register method will get executed/called.
+                                   //api/v1/users/? iske baad jo bhi hum dalenge vo execute ho jayega
+router.route("/register").post(   //example:api/v1/users/register -->toh phir control pehle middleware per phir registerUser pe jayega
+  upload.fields([ // upload.fields()--> middleware
+    {
+      name: "avatar",
+      maxCount: 1,
+    },
+    {
+      name: "coverimage",
+      maxCount: 1,
+    },
+  ]),
+  registerUser
+); //As soon as you hit /register, then register method will get executed/called.
 
 export default router;
 

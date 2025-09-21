@@ -6,7 +6,7 @@ const connectDB = async () => {
         const connectionInstance = await mongoose.connect(
           `${process.env.MONGODB_URI}/${DB_NAME}`
         );
-        console.log(`\n MongoDB connected !! DB HOST : ${connectionInstance.connection.host}`);  
+        console.log(`\n MongoDB connected !! DB HOST : ${connectionInstance.connection.host}`); // connectionInstance.connection gives the actual MongoDB connection. , .host tells you the hostname of the MongoDB server your app connected to.
     } catch (error) {
       console.log("MongoDB connection error ", error);
       process.exit(1); //exit from process no.1, read Nodejs Docs for more info || ChatGPT
@@ -14,7 +14,7 @@ const connectDB = async () => {
     }
 }
 
-export default connectDB;
+export default connectDB; 
 
 /**process → A global Node.js object that gives information and control over the current running Node.js process.
 .exit(code) → A method that ends the process with the given exit code.

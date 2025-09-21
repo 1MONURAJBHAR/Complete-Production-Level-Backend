@@ -1,10 +1,21 @@
-//require('dotenv').config({path: './env'})
-import dotenv from "dotenv";
+//The key thing is: dotenv must be loaded before you access process.env. Using import "dotenv/config"; at the very top ensures that.
+
+
+import dotenv from "dotenv";  //old classic method must explicitly call dotenv.config(),Only after calling config() are your environment variables available via process.env.
+                              //Explicit control over .env file path,Can call it multiple times if needed.
+
+import "dotenv/config"; // ✅ simple way  //this is new feature directly calls doteve.config() and .env file must be in project root directory
+                                //.env is directly loaded into proccess.env using this new feature
+
+/**It automatically calls dotenv.config() with default settings, it does need to inject any variable from .env
+By default, dotenv looks for a file named .env in your project root.
+If it does not find a .env file there, it silently fails. No error is thrown; process.env stays empty. */
+
 import connectDB from "./db/index.js";
 import { app } from "./app.js";
 
-dotenv.config({
-  //path: './.env' → means you are telling dotenv to look for a file literally named .env ,.
+dotenv.config({   //it will inject variable from this path of .env
+  //path: './.env' → means you are telling dotenv to look for a file literally named .env ,. // loads .env file into process.env
   path: "./.env",
 });
 

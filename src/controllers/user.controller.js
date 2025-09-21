@@ -5,72 +5,78 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponce } from "../utils/ApiResponce.js"
 
 const registerUser = asyncHandler(async (req, res) => {
-    //get user details from frontend
-    //validation - not empty
-    //chack if user already exists: username,email
-    //check for images, check for avatar
-    //upload them to cloudinary, avatar
-    //create user object - create entry in db
-    //remove password and refresh token field from response
-    //check for user creation
-    //return response
+  //get user details from frontend
+  //validation - not empty
+  //chack if user already exists: username,email
+  //check for images, check for avatar
+  //upload them to cloudinary, avatar
+  //create user object - create entry in db
+  //remove password and refresh token field from response
+  //check for user creation
+  //return response
 
-    const { fullName, email, username, password } = req.body //We get user data when it comes from body, if it comes from url use req.params 
-   // console.log("email ", email);
+  const { fullName, email, username, password } = req.body; //We get user data when it comes from body, if it comes from url use req.params
+  // console.log("email ", email);
 
-    if (
-        [fullName,email,username,password].some((field)=> field?.trim() ==="") //it will check that each field is there
-    ) {
-        throw new ApiError(400,"All fields are required")
-    }
+  if (
+    [fullName, email, username, password].some((field) => field?.trim() === "") //it will check that each field is there
+  ) {
+    throw new ApiError(400, "All fields are required");
+  }
 
-    const exitedUser = User.findOne({  //It will find inside the DB either username or either email. 
-        $or: [{ username }, { email }]  //findOne & findById are the database calls i.e : find inside the database
-    })
+  const existedUser = await User.findOne({
+    //It will find inside the DB either username or either email.
+    $or: [{ username }, { email }], //findOne & findById are the database calls i.e : find inside the database
+  });
 
-    if (exitedUser) {
-        throw new ApiError(409, "User with email or username already exists")
-    }
+  if (existedUser) {
+    throw new ApiError(409, "User with email or username already exists");
+  }
 
-    const avatarLocalPath = req.files?.avatar[0]?.path;    //middleware me jab hum upload karte hain files field(avatar) ke andar uske baad req.files hame ek object-->{} deta hai, jisme saari info hoti hai including path
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  const avatarLocalPath = req.files?.avatar?.[0]?.path; //Jo file user ne upload kari hain vo file temporarily server ke uper hoti hai kisi folder me, toh unka path nikal rahe hain yaha per ,cloudinary me un file ko upload kerne ke liye
+  const coverImageLocalPath = req.files?.coverimage?.[0]?.path; //middleware file ko dest pe upload kerdeta hai with unique file name, uske baad vo ek object deta hai jisme  array fields hote (ex: {avatar:[{},{},{}.....{}], coverimage:[{},{}.....{}]<--object files inside array field -->coverimage}) hain aur un array field ke andar bahut saare files ke object hote hain,
+                                                            //  req.files hame ek object-->{} deta hai, jisme saari info hoti hai including path usi ki ko access kar re hain
 
-    if (!avatarLocalPath) {
-        throw new ApiError(400, "Avatar file is required")
-    }
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is required");
+  }
 
-    const avatar =  await uploadOnCloudinary(avatarLocalPath)
-    const coverimage = await uploadOnCloudinary(coverImageLocalPath)
-    
-    if (!avatar) {
-        throw new ApiError(400,"Avatar file is required")
-    }
- 
-   const user = await User.create({  //"User" directly interacts with the database & creates this object in the database
-        fullName,                      // & store it in variable named user
-        avatar: avatar.url,
-        coverimage: coverimage?.url || "",
-        email,
-        password,
-        username: username.tolowercase()
-    })
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
+  const coverimage = await uploadOnCloudinary(coverImageLocalPath);
 
-    const createdUser = await User.findById(user._id).select(   //find the user with his id from the database, here "User" directly interacts with the database
-        "-password -refreshToken  "
+  /*console.log("Avatar path", avatar);  //For only debugging purpose
+  console.log("coverimage", coverimage);*/
+
+  if (!avatar) {
+    throw new ApiError(400, "Avatar file is required now");
+  }
+
+  const user = await User.create({
+    //"User" directly interacts with the database & creates this object in the database
+    fullName, // & store it in variable named user
+    avatar: avatar.url,
+    coverimage: coverimage?.url || "",
+    email,
+    password,
+    username: username.toLowerCase(),
+  });
+
+  const createdUser = await User.findById(user._id).select(
+    //find the user with his id from the database, here "User" directly interacts with the database
+    "-password -refreshToken  "
+  );
+
+  if (!createdUser) {
+    throw new ApiError(500, "Something went wrong while registering the user");
+  }
+
+  return res.status(201).json(
+    new ApiResponce(
+      200, //statuscode
+      createdUser, //Data
+      "user registered successfully" //message
     )
-
-    if (!createdUser) {
-        throw new ApiError(500, "Something went wrong while registering the user")
-    }
-
-    return res.status(201).json(
-        new ApiResponce(
-            200,           //statuscode
-            createdUser,   //Data
-            "user registered successfully"  //message
-         )
-     )
-
+  );
 })
 
 export { registerUser }
