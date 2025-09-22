@@ -104,14 +104,16 @@ userSchema.methods.generateRefreshToken = function () {
 }
 
 
+export const User = mongoose.model("User", userSchema); //This "User" directly interacts with the database
+
+
+
 /**  format: xxxxx.yyyyy.zzzzz
  * Header – Algorithm & token type (e.g., { "alg": "HS256", "typ": "JWT" }) forms first part of the token: xxxxx.
 Payload – Contains the actual data you want to transmit (claims)., e.g. { "userId": 123, "role": "admin" }  forms second part: yyyyy.
-Signature – Ensures the token hasn’t been tampered with 
+Signature – Ensures the token hasn’t been tampered with i.e: We want to make sure that the token received from the client is the same token we originally issued, and no one has modified it in between.
+          
+
 Take Header (base64) + Payload (base64) → join with a dot.
 Sign it using a secret key and the algorithm from the header.
 The result is the Signature (third part of JWT, zzzzz).*/
-
-
- 
-export const User = mongoose.model("User", userSchema); //This "User" directly interacts with the database

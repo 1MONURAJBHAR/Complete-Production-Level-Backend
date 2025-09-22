@@ -21,10 +21,12 @@ const uploadOnCloudinary = async (localFilePath) => {
 
       //file has been uploaded successfully
       console.log("file is uploaded on cloudinary ", response.url);
+      //console.log("This is response object",response);
+      
 
       // Remove the local file after successful upload
       if (fs.existsSync(localFilePath)) {
-        fs.unlinkSync(localFilePath);
+        fs.unlinkSync(localFilePath); //means delete a file from your local filesystem.
       }
 
       return response;  //It will return an object which conations a lot of info like size,url,type & etc..
@@ -48,6 +50,16 @@ export { uploadOnCloudinary };
 
 
 
+  /**fs.unlinkSync(localFilePath);
+means delete a file from your local filesystem.
+
+Breakdown:
+fs → Node’s built-in File System module.
+unlink → Function used to remove (delete) a file.
+Sync → Means it runs synchronously (blocking). The program will stop and wait until the file is deleted before continuing.
+localFilePath → The full path (like "./uploads/file.png") to the file you want to delete. */
+  
+  
 /**When you upload a file to Cloudinary with:
 const response = await cloudinary.uploader.upload("myphoto.jpg");
 console.log("file is uploaded on cloudinary ", response.url);

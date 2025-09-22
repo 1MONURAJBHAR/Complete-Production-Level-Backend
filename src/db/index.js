@@ -16,6 +16,38 @@ const connectDB = async () => {
 
 export default connectDB; 
 
+
+
+/**DB_NAME is the name of the database you want to connect to in MongoDB.
+How it works:
+
+process.env.MONGODB_URI usually looks like this:
+
+mongodb+srv://username:password@cluster0.kh5yr0e.mongodb.net
+
+(Notice: there’s no database name at the end, just the cluster URI).
+By adding /${DB_NAME}, you’re telling MongoDB which specific database in that cluster you want to connect to.
+
+Example:
+
+MONGODB_URI=mongodb+srv://raj:1234@cluster0.kh5yr0e.mongodb.net
+DB_NAME=myappdb
+
+Code expands to:
+mongodb+srv://raj:1234@cluster0.kh5yr0e.mongodb.net/myappdb
+
+This means: connect to the myappdb database inside your cluster.
+⚡️ If you don’t provide DB_NAME
+MongoDB will default to the database named test.
+That’s usually not what you want in production.
+✅ So DB_NAME = the database name inside your MongoDB cluster where your collections (users, products, etc.) will be stored. */
+
+
+
+
+
+
+
 /**process → A global Node.js object that gives information and control over the current running Node.js process.
 .exit(code) → A method that ends the process with the given exit code.
 

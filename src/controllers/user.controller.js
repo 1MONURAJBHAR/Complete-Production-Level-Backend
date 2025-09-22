@@ -17,6 +17,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const { fullName, email, username, password } = req.body; //We get user data when it comes from body, if it comes from url use req.params
   // console.log("email ", email);
+ // console.log("This is req.body object", req.body);
 
   if (
     [fullName, email, username, password].some((field) => field?.trim() === "") //it will check that each field is there
@@ -34,8 +35,18 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const avatarLocalPath = req.files?.avatar?.[0]?.path; //Jo file user ne upload kari hain vo file temporarily server ke uper hoti hai kisi folder me, toh unka path nikal rahe hain yaha per ,cloudinary me un file ko upload kerne ke liye
-  const coverImageLocalPath = req.files?.coverimage?.[0]?.path; //middleware file ko dest pe upload kerdeta hai with unique file name, uske baad vo ek object deta hai jisme  array fields hote (ex: {avatar:[{},{},{}.....{}], coverimage:[{},{}.....{}]<--object files inside array field -->coverimage}) hain aur un array field ke andar bahut saare files ke object hote hain,
-                                                            //  req.files hame ek object-->{} deta hai, jisme saari info hoti hai including path usi ki ko access kar re hain
+  const coverImageLocalPath = req.files?.coverimage?.[0]?.path; //middleware file ko dest pe upload kerdeta hai with unique file name, uske baad vo ek object deta hai jisme  array fields hote (ex: {avatar:[{},{},{}.....{}], coverimage:[{},{}.....{}]<--object files inside array field -->coverimage}) hain aur un array field ke andar bahut saare files ke object hote hain.
+
+  //  req.files hame ek object-->{} deta hai, jisme saari info hoti hai including path usi ki ko access kar re hain
+  //console.log("This is req.files object ", req.files); //check it by debugging it on terminal
+  //console.log("This is req.files?.avatar?.[0] object ", req.files?.avatar?.[0]); //check it by debugging it on terminal, //req.files ke andar avatar field array ke andar jo 0th index pe file object hai vo log karo
+
+  //another method
+  /*let coverImageLocalPath;   //similarly we can do for avatarLocalPath also 
+  if (req.files && Array.isArray(req.files.coverimage) && req.files.coverimage.length > 0) {
+    coverImageLocalPath = req.files.coverimage[0].path;
+  }*/
+
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file is required");
@@ -79,7 +90,199 @@ const registerUser = asyncHandler(async (req, res) => {
   );
 })
 
-export { registerUser }
+
+const generateAccessAndRefreshTokens = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false }); //Save the document to MongoDB, but skip running Mongoose validators before saving. see below for more info
+      
+    return { accessToken, refreshToken }
+    
+  } catch (error) {
+    throw new ApiError(500,"Something went wrong while generating access and refresh token")
+  }
+}
+
+
+
+const loginUser = asyncHandler(async (req, res) => {
+  //fetch data from req.body
+  //find username or email
+  //find the user
+  //Password check
+  //access and refresh token
+  //send cookie
+
+  const { email, username, password } = req.body;
+
+  if (!username && !email) {
+    throw new ApiError(400, "username or email is required");
+  }
+
+  const user = User.findOne({ $or: [{ username }, { email }] });
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  //Here "User"-->it is object of mongoose from mongodb so using this we can access only methods given by mongoose like findById(),findOne() & etc..
+  //"user"--> it is our user which we have taken from the database, using this we can access the custom methods like isPasswordcorrect(),generateAccessToken(),generateRefreshToken()
+  const isPasswordValid = await user.isPasswordCorrect(password)
+  
+  if (!isPasswordValid) {
+    throw new ApiError(401,"Invalid user credentials");
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
+  
+  const loggedInUser = await User.frindById(user._id).select("-password -refreshToken")
+
+  const options = {
+    httpOnly: true,
+    secure: true
+  }
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponce(
+        200,
+        { //we are resending this acctkn & rfshtkn becs if user wants to save these tokens in their local storage then they can do it, and also in mobile apps no cookies are stored so this is important.
+          user: loggedInUser, accessToken, refreshToken
+        },
+        "User logged In successfully"
+    )
+  )
+
+})
+
+ 
+
+
+
+const logoutUser = asyncHandler(async (req, res) => {
+  await User.findByIdAndUpdate(
+    req.user._id,  //This req.user will come from verifyJWT midleware
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true, //{ new: true } → Makes sure you get back the updated document instead of the old one.
+    }
+  );
+
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+
+  return res
+    .status(200)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponce(200, {}, "User logged Out Successfully"))
+  
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export { registerUser, loginUser, logoutUser };
+  
+
+  
+  
+  
+  
+  
+  
+  /**{ new: true }
+is usually seen in Mongoose (MongoDB ODM for Node.js).
+
+👉 Example:
+
+js
+const updatedUser = await User.findByIdAndUpdate(
+  userId,
+  { username: "newName" },
+  { new: true }   // 👈 this
+);
+Meaning of { new: true }
+By default, findByIdAndUpdate (and similar update methods) returns the old document (the one before update).
+
+When you pass { new: true }, it makes Mongoose return the updated document instead.
+
+So:
+
+Without { new: true } → you get the old version.
+
+With { new: true } → you get the updated version. ✅ */
+  
+  
+  
+  
+  
+  
+  
+
+
+/**
+ * 
+ * await user.save({ validateBeforeSave: false })
+means:
+
+👉 Save the document to MongoDB, but skip running Mongoose validators before saving.
+Normally:
+When you do:
+
+js
+Copy code
+await user.save()
+Mongoose runs all schema validations (required, unique, minlength, match, custom validators, etc.) before saving.
+
+If validation fails → it throws an error and does not save.
+With { validateBeforeSave: false }:
+Skips schema validation.
+Directly pushes the document to MongoDB.
+
+Useful when:
+You want to update only 1–2 fields and don’t want other required fields to be validated again.
+You are making internal updates (e.g., updating only a token or a timestamp).
+You trust the data and don’t need to revalidate. */
+
+
+
+
+
+
+
+
+
 
 
 
