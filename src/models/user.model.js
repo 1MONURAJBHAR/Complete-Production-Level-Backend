@@ -59,10 +59,11 @@ userSchema.pre("save", async function (next) {
   next()
 })
 
-userSchema.methods.isPasswordCorrect = async function (password) { //inside the user schema there is an object called "methods" (object-->{}), you can add as many as methods inside that object
+userSchema.methods.isPasswordCorrect = async function (password) {
+  //inside the user schema there is an object called "methods" (object-->{}), you can add as many as methods inside that object
   //i.e: injecting this method into the methods object
-  return await bcrypt.compare(password,this.password)
-}
+  return await bcrypt.compare(password, this.password);
+};
 /**userSchema.methods is an object where you can define instance methods for your schema.
 Instance methods are functions that each document (record) created from the model can use.
 
@@ -91,6 +92,13 @@ userSchema.methods.generateAccessToken = function () {
     }
   )
 }
+
+/**Access tokens are sent by the frontend with each request.
+Server checks the token, performs the requested action, then sends a response. */
+
+
+
+
 userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(    //.sign method will create a token
     {  //This is payload

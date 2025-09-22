@@ -1,6 +1,6 @@
 import asyncHandler from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
-import {User} from "../models/user.model.js"
+import { User } from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponce } from "../utils/ApiResponce.js"
 
@@ -98,10 +98,9 @@ const generateAccessAndRefreshTokens = async (userId) => {
     const refreshToken = user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false }); //Save the document to MongoDB, but skip running Mongoose validators before saving. see below for more info
-      
-    return { accessToken, refreshToken }
-    
+    await user.save({ validateBeforeSave: false }); //Save the document to MongoDB, but skip running Mongoose validators before saving. Directly pushes the document to MongoDB. see below for more info
+
+    return { accessToken, refreshToken };
   } catch (error) {
     throw new ApiError(500,"Something went wrong while generating access and refresh token")
   }
@@ -120,10 +119,13 @@ const loginUser = asyncHandler(async (req, res) => {
   const { email, username, password } = req.body;
 
   if (!username && !email) {
+    //or (!(username || email)) this is also correct
     throw new ApiError(400, "username or email is required");
   }
 
-  const user = User.findOne({ $or: [{ username }, { email }] });
+  const user = await User.findOne({    /**User.findOne() is an asynchronous mongoose function.It returns a Promise, not the actual user document.Hence must use "await"*/
+    $or: [{ username }, { email }],
+  });
 
   if (!user) {
     throw new ApiError(404, "User does not exist");
@@ -131,20 +133,24 @@ const loginUser = asyncHandler(async (req, res) => {
 
   //Here "User"-->it is object of mongoose from mongodb so using this we can access only methods given by mongoose like findById(),findOne() & etc..
   //"user"--> it is our user which we have taken from the database, using this we can access the custom methods like isPasswordcorrect(),generateAccessToken(),generateRefreshToken()
-  const isPasswordValid = await user.isPasswordCorrect(password)
-  
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
   if (!isPasswordValid) {
-    throw new ApiError(401,"Invalid user credentials");
+    throw new ApiError(401, "Invalid user credentials");
   }
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
-  
-  const loggedInUser = await User.frindById(user._id).select("-password -refreshToken")
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id
+  );
+
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
 
   const options = {
     httpOnly: true,
-    secure: true
-  }
+    secure: true,
+  };
 
   return res
     .status(200)
@@ -153,13 +159,15 @@ const loginUser = asyncHandler(async (req, res) => {
     .json(
       new ApiResponce(
         200,
-        { //we are resending this acctkn & rfshtkn becs if user wants to save these tokens in their local storage then they can do it, and also in mobile apps no cookies are stored so this is important.
-          user: loggedInUser, accessToken, refreshToken
+        {
+          //we are resending this acctkn & rfshtkn becs if user wants to save these tokens in their local storage then they can do it, and also in mobile apps no cookies are stored so this is important.
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
         },
         "User logged In successfully"
-    )
-  )
-
+      )
+    );
 })
 
  
@@ -168,11 +176,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
 const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
-    req.user._id,  //This req.user will come from verifyJWT midleware
+    req.user._id, //This req.user will come from verifyJWT midleware
     {
-      $set: {
-        refreshToken: undefined,
-      },
+      $unset: { refreshToken: 1 },
     },
     {
       new: true, //{ new: true } → Makes sure you get back the updated document instead of the old one.
@@ -198,26 +204,141 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 
 
+const refreahAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
+
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, "Unauthorized Request");
+  }
+
+  try {
+    const decodeToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+  
+    const user = await User.findById(decodeToken?._id);
+  
+    if (!user) {
+      throw new ApiError(401, "Invalid refresh token");
+    }
+  
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new ApiError(401, "Refresh token is expired or used");
+    }
+  
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+  
+    const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+  
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponce(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access token refreshed"
+        )
+      );
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid refresh token")
+  }
+
+  /**user is a Mongoose document (an object representing a MongoDB document).
+    refreshToken: newRefreshToken--> This line updates the refreshToken field in memory.
+    refreshToken is usually long-lived, used only to generate a new short-lived access token when it expires.
+    If you just assign it but don’t call save(), it won’t persist in MongoDB.
+    Always ensure your schema defines it:refreshToken: { type: String, default: null }
+ */
+})
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-export { registerUser, loginUser, logoutUser };
+export { registerUser, loginUser, logoutUser, refreahAccessToken };
   
 
   
   
   
+
+  
+  
+
+
+  
+  
+  
+
+  
+  
+  
+  
+  
+  
+  
+  //adding a field to mongodb
+  /**
+   * user.refreshToken = refreshToken;
+     await user.save({ validateBeforeSave: false });
+user is a Mongoose document (the actual user object fetched from DB).
+
+You assign a new value to its refreshToken property →
+this updates the document in memory.
+
+await user.save() writes those changes back to MongoDB.
+
+So in your users collection, the document will now have (or update) the field:
+
+json
+Copy code
+{
+  "_id": "652abc123...",
+  "fullName": "John Doe",
+  "email": "john@example.com",
+  "username": "john",
+  "password": "hashed-password",
+  "avatar": "cloudinary-link",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR..."
+}
+⚠️ Important:
+
+If your User schema does not have a refreshToken field defined, Mongoose will still add it dynamically (because MongoDB is schemaless at core).
+But it’s better practice to define it explicitly in your schema:
+
+js
+Copy code
+refreshToken: {
+  type: String,
+  default: null
+}
+This way, you avoid bugs and ensure type consistency. */
+
+
+  
+
+
+  
+
+
+
+
+  
+
+
+  
+  
+  
+
   
   
   
@@ -260,8 +381,6 @@ means:
 Normally:
 When you do:
 
-js
-Copy code
 await user.save()
 Mongoose runs all schema validations (required, unique, minlength, match, custom validators, etc.) before saving.
 

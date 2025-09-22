@@ -1,5 +1,10 @@
 import { Router } from "express"
-import { loginUser, logoutUser, registerUser } from "../controllers/user.controller.js"
+import {
+  loginUser,
+  logoutUser,
+  registerUser,
+  refreahAccessToken,
+} from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -22,8 +27,11 @@ router.route("/register").post(   //example:api/v1/users/register -->toh phir co
 
 router.route("/login").post(loginUser)
 
-//secured routes
-router.route("/logout").post(verifyJWT,logoutUser)
+//secured routes -->i.e: user must be loggedin
+router.route("/logout").post(verifyJWT, logoutUser)
+router.route("/refresh-token").post(refreahAccessToken);
+
+
 
 export default router;
 
