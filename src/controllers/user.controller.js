@@ -172,8 +172,6 @@ const loginUser = asyncHandler(async (req, res) => {
 
  
 
-
-
 const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id, //This req.user will come from verifyJWT midleware
@@ -199,8 +197,6 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponce(200, {}, "User logged Out Successfully"))
   
 })
-
-
 
 
 
@@ -261,10 +257,152 @@ const refreahAccessToken = asyncHandler(async (req, res) => {
 })
 
 
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body
+  
+  //if we provide confirm password field then write this code also
+  // if(!(newPassword === confPassword)){
+  //   throw new ApiError(401,"new password and confirm password must be same")
+  // } 
 
 
+  const user = await User.findById(req.user?._id)
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
 
-export { registerUser, loginUser, logoutUser, refreahAccessToken };
+  if (!isPasswordCorrect) {
+    throw new ApiError(400,"Invalid old password")
+  }
+
+  user.password = newPassword
+  await user.save({ validateBeforeSave: false })
+  
+  return res
+    .status(200)
+    .json(new ApiResponce(200, {}, "Password changed successfully"))
+  
+})
+
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(200, req.user, "current user fetched successfully")
+  
+})
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullName, email } = req.body
+  
+  if (!fullName || !email) {
+    throw new ApiError(400,"All fields are required")
+  }
+  
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        fullName: fullName, //or fullName only
+        email: email     //or email only
+      }
+    },
+    {
+      new:true
+    }
+  ).select("-password")
+
+
+  return res
+    .status(200)
+    .json(new ApiResponce(200, user, "Account details updated succcessfully"))
+  
+
+})
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path; //This is only "file" not "files" since we are updating only one file
+
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is missing");
+  }
+
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+  if (!avatar.url) {
+    throw new ApiError(400, "Error while uploading avatar");
+  }
+
+  /*const user = await User.findById(req.user._id).select("-password ")
+
+  user.avatar = avatar.url
+  await user.save({ validateBeforeSave: false})*/
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        avatar: avatar.url,
+      },
+    },
+    {
+      new: true,
+    }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(new ApiResponce(200, user, "Avatar Updated successfully"));
+})
+
+
+const updateUserCoverimage = asyncHandler(async (req, res) => {
+  const coverImageLocalPath = req.file?.path
+
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, "cover image file is missing");
+  }
+
+  const coverimage = await uploadOnCloudinary(coverImageLocalPath);
+
+  if (!coverimage.url) {
+    throw new ApiError(400,"Error while uploading avatar")
+  }
+
+  /*const user = await User.findById(req.user._id).select("-password ")
+
+  user.coverimage = coverimage.url
+  await user.save({ validateBeforeSave: false})*/
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        coverimage: coverimage.url,
+      },
+    },
+    {
+      new: true,
+    }
+  ).select("-password");
+
+
+  return res
+    .status(200)
+    .json(new ApiResponce(200, user, "Cover image Updated successfully"))
+  
+
+})
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreahAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverimage,
+};
   
 
   
