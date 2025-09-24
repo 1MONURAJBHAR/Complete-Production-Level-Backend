@@ -3,6 +3,8 @@ import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponce } from "../utils/ApiResponce.js"
+import { subcriptions } from "../models/subcription.model.js"
+import mongoose from "mongoose"
 
 const registerUser = asyncHandler(async (req, res) => {
   //get user details from frontend
@@ -74,7 +76,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const createdUser = await User.findById(user._id).select(
     //find the user with his id from the database, here "User" directly interacts with the database
-    "-password -refreshToken  "
+    "-password "
   );
 
   if (!createdUser) {
@@ -286,7 +288,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
-    .json(200, req.user, "current user fetched successfully")
+    .json(new ApiResponce(200, req.user, "current user fetched successfully"));
   
 })
 
@@ -335,8 +337,8 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   user.avatar = avatar.url
   await user.save({ validateBeforeSave: false})*/
-
-  const user = await User.findByIdAndUpdate(
+/****************OR************************** */
+  /*const user = await User.findByIdAndUpdate( 
     req.user?._id,
     {
       $set: {
@@ -346,7 +348,23 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     {
       new: true,
     }
-  ).select("-password");
+  ).select("-password");*/
+
+  // ✅ Find the user first to get old avatar
+  const user = await User.findById(req.user?._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // ✅ Delete old avatar if it exists
+  if (user.avatar) {
+    await deleteFromCloudinary(user.avatar);
+  }
+
+  // ✅ Update with new avatar
+  user.avatar = avatar.url;
+  await user.save({ validateBeforeSave: false });
 
   return res
     .status(200)
@@ -355,7 +373,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
 
 const updateUserCoverimage = asyncHandler(async (req, res) => {
-  const coverImageLocalPath = req.file?.path
+  const coverImageLocalPath = req.file?.path;
 
   if (!coverImageLocalPath) {
     throw new ApiError(400, "cover image file is missing");
@@ -364,15 +382,15 @@ const updateUserCoverimage = asyncHandler(async (req, res) => {
   const coverimage = await uploadOnCloudinary(coverImageLocalPath);
 
   if (!coverimage.url) {
-    throw new ApiError(400,"Error while uploading avatar")
+    throw new ApiError(400, "Error while uploading avatar");
   }
 
   /*const user = await User.findById(req.user._id).select("-password ")
 
   user.coverimage = coverimage.url
   await user.save({ validateBeforeSave: false})*/
-
-  const user = await User.findByIdAndUpdate(
+  /***************OR************************* */
+  /*const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -382,15 +400,162 @@ const updateUserCoverimage = asyncHandler(async (req, res) => {
     {
       new: true,
     }
-  ).select("-password");
+  ).select("-password");*/
+
+  // ✅ Find the user first to get old avatar
+  const user = await User.findById(req.user?._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // ✅ Delete old avatar if it exists
+  if (user.coverimage) {
+    await deleteFromCloudinary(user.coverimage);
+  }
+
+  // ✅ Update with new avatar
+  user.coverimage = coverimage.url;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponce(200, user, "Cover image Updated successfully"));
+})
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params
+  
+  if (!username?.trim()) {
+    throw new ApiError(400,"username is missing")
+  }
+
+  const channel = await User.aggregate([
+    {
+      $match: {
+        //This will give me the user document form the mongodb as my username matches.
+        username: username?.toLowerCase(),
+      },
+    },
+    {
+      $lookup: {
+        //channel ko kitne logo ne subscribe kiya
+        from: "subcriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers", //subscribers field-->(array of objects) ko add kar do user document me, isme saare subscriptions ke objects jinki channel ki id meri local id se match kar rhi hai, vo hai.
+      },
+    },
+    {
+      $lookup: {
+        //user ne kitne channel jo subscribe kiya
+        from: "subcriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo", //subscribedTo field-->(array of objects) ko add kar do user document me, isme saare subscriptions ke objects jinki subcriber ki id meri local id se match kar rhi hai, vo hai.
+      },
+    },
+    {
+      $addFields: {
+        //add fields to user document
+        subscribersCount: {
+          $size: "$subscribers",
+        },
+        channelsSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+        isSubscribed: {
+          $cond: {   //$in ---> ye array and objects dono ke andar dekhta hai
+            if: { $in: [req.user?.id, "$subscribers.subscriber"] },
+            then: true,
+            else: false
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        subscribersCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+        avatar: 1,
+        coverimage: 1,
+        email: 1
+      }
+    }
+
+  
+  ]);
+
+  if (!channel?.length) {
+    throw new ApiError(404,"channel does not exist")
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponce(200, channel[0], "User channel fetched successfully"))
+  
+
+})
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+         _id: mongoose.Types.ObjectId(req.user._id)
+       }
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "WatchHistory",
+        foreignField: "_id",
+        as: "WatchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar:1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $addFields: {
+              owner: {
+                $first: "$owner" 
+                       //or
+                //$arrayElemAt: ["owner",0]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ])
 
 
   return res
     .status(200)
-    .json(new ApiResponce(200, user, "Cover image Updated successfully"))
-  
-
+    .json(new ApiResponce(
+      200,
+      user[0].watchHistory,
+      "Watch History fetched successfully"
+  ))
 })
+
+
 
 export {
   registerUser,
@@ -402,24 +567,464 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverimage,
+  getUserChannelProfile,
+  getWatchHistory,
 };
   
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  
+  /**. Why you see user[0]
+
+When you use aggregation pipeline (User.aggregate([...])), the result is always an array of documents.
+
+So if you run:
+
+const user = await User.aggregate([
+  { $match: { _id: mongoose.Types.ObjectId(req.user._id) } },
+  { $lookup: { ... } }
+]);
+
+
+The result is like:
+
+[
+  {
+    _id: ObjectId("u123"),
+    fullName: "Monu",
+    watchHistory: [ObjectId("v1"), ObjectId("v2")]
+  }
+]
+
+
+That’s why you need user[0] to get the first document.
+
+2. user[0].watchHistory
+
+This means → “from the first document in the result array, access the watchHistory field”.
+
+Example:
+
+console.log(user[0].watchHistory);
+
+
+Might print:
+
+[
+  ObjectId("v1"),
+  ObjectId("v2")
+]
+
+3. If you want to avoid user[0]
+
+If you only expect one document, you can instead use:
+
+const user = await User.findById(req.user._id).populate("watchHistory");
+
+
+or if you stick with aggregation, you can do:
+
+const [user] = await User.aggregate([
+  { $match: { _id: mongoose.Types.ObjectId(req.user._id) } },
+  { $lookup: { ... } }
+]);
+
+console.log(user.watchHistory);
+
+
+Here, destructuring (const [user] = ...) makes user the first document directly, so no need for user[0]. */
+  
+
+ / //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /**Your aggregation code:
+
+$lookup: {
+  from: "videos",
+  localField: "WatchHistory",
+  foreignField: "_id",
+  as: "WatchHistory"
+}
+
+🔎 Explanation
+
+from: "videos"
+→ Tells MongoDB which collection to join with. Here it’s the videos collection.
+
+localField: "WatchHistory"
+→ The field in your current collection (say, users) that stores references.
+Example: A user document might look like:
+
+{
+  "_id": "u123",
+  "name": "Monu",
+  "WatchHistory": [
+    ObjectId("a1"),
+    ObjectId("a2"),
+    ObjectId("a3")
+  ]
+}
+
+
+Here WatchHistory is an array of video _ids.
+
+foreignField: "_id"
+→ The field in the videos collection that matches the values from WatchHistory.
+In videos, each document has an _id:
+
+{
+  "_id": ObjectId("a1"),
+  "title": "Intro to MongoDB",
+  "duration": 10
+}
+
+
+as: "WatchHistory"
+→ The name of the new array field that will be added to your result documents after the join.
+Since you used the same name as localField, it will replace your original array of ObjectIds with an array of full video documents.
+
+🔗 How it works
+
+So for a given user:
+
+{
+  "_id": "u123",
+  "name": "Monu",
+  "WatchHistory": [ObjectId("a1"), ObjectId("a2")]
+}
+
+
+After $lookup, you’ll get:
+
+{
+  "_id": "u123",
+  "name": "Monu",
+  "WatchHistory": [
+    {
+      "_id": ObjectId("a1"),
+      "title": "Intro to MongoDB",
+      "duration": 10
+    },
+    {
+      "_id": ObjectId("a2"),
+      "title": "Aggregation Deep Dive",
+      "duration": 15
+    }
+  ]
+}
+
+
+✅ In short:
+This $lookup is fetching all the video documents whose _id values match the ids in the user’s WatchHistory array, and embedding them in place of WatchHistory. */
+  
+  
+  
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /**The Code
+{
+  $lookup: {
+    from: "users",             // collection to join with
+    localField: "owner",       // field in current collection (e.g., "videos.owner")
+    foreignField: "_id",       // field in "users" collection to match with
+    as: "owner",               // name of the output array field
+    pipeline: [                // additional processing on the joined documents
+      {
+        $project: {            // choose only specific fields
+          fullName: 1,
+          username: 1,
+          avatar: 1
+        }
+      }
+    ]
+  }
+}
+
+🔎 What happens here
+
+from: "users"
+→ We’re joining with the users collection.
+
+localField: "owner"
+→ In your current collection (say videos), there’s a field owner that stores the user’s _id.
+Example:
+
+{
+  "_id": ObjectId("vid123"),
+  "title": "MongoDB Tutorial",
+  "owner": ObjectId("u456")
+}
+
+
+foreignField: "_id"
+→ In users collection, we match against the _id field.
+Example:
+
+{
+  "_id": ObjectId("u456"),
+  "fullName": "Monu Rajbhar",
+  "username": "monu123",
+  "avatar": "profile.jpg",
+  "email": "monu@example.com",
+  "password": "hashed..."
+}
+
+
+as: "owner"
+→ The result will add an owner array containing the matched user document(s).
+
+pipeline
+→ Before embedding the user document, MongoDB runs the given pipeline on it.
+Here you’re using $project to only keep fullName, username, and avatar.
+Fields like email, password, etc. will be excluded.
+
+📌 Example Result
+
+After this $lookup, your videos document will look like:
+
+{
+  "_id": ObjectId("vid123"),
+  "title": "MongoDB Tutorial",
+  "owner": [
+    {
+      "fullName": "Monu Rajbhar",
+      "username": "monu123",
+      "avatar": "profile.jpg"
+    }
+  ]
+}
+
+
+✅ In short:
+This lookup replaces the owner user id with detailed user info, but only selected fields (name, username, avatar), keeping the response lean and secure. */
+  
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  
+  /**.populate("watchHistory")
+does in Mongoose.
+
+🔎 What populate("watchHistory") means
+In your User schema, you likely have something like:
+
+js
+Copy code
+const userSchema = new Schema({
+  fullName: String,
+  watchHistory: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Video"   // reference to Video collection
+    }
+  ]
+});
+When you fetch a user with:
+
+js
+Copy code
+const user = await User.findById(req.user._id).populate("watchHistory");
+Without populate, user.watchHistory is just an array of ObjectIds:
+
+json
+Copy code
+[
+  "652a8f0b23d...",
+  "652a8f1c89b..."
+]
+With populate, Mongoose automatically replaces those ObjectIds with the full documents from the videos collection:
+
+json
+Copy code
+[
+  {
+    "_id": "652a8f0b23d...",
+    "title": "Intro to MongoDB",
+    "duration": 10
+  },
+  {
+    "_id": "652a8f1c89b...",
+    "title": "Aggregation Deep Dive",
+    "duration": 15
+  }
+]
+📌 Customizing populate
+You can also choose which fields to return:
+
+js
+Copy code
+const user = await User.findById(req.user._id)
+  .populate("watchHistory", "title duration");
+Result:
+
+json
+Copy code
+"watchHistory": [
+  { "_id": "652a8f0b23d...", "title": "Intro to MongoDB", "duration": 10 },
+  { "_id": "652a8f1c89b...", "title": "Aggregation Deep Dive", "duration": 15 }
+]
+✅ In short:
+.populate("watchHistory") tells Mongoose:
+👉 “Instead of just ObjectId references, go fetch the actual Video documents and embed them here.” */
+  
+  
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
+  /**Got it 👍 Let’s break down your subscriptionSchema line by line:
+
+📌 subscriber
+subscriber: {
+  type: Schema.Types.ObjectId, // one who is subscribing
+  ref: "User",
+}
+
+
+This field stores the user who is doing the subscribing.
+It’s an ObjectId (MongoDB’s unique ID type) that points to the User collection.
+ref: "User" tells Mongoose that this field is a reference → so you can later use .populate("subscriber") to get the full subscriber’s user details instead of just the ID.
+
+📌 channel
+channel: {
+  type: Schema.Types.ObjectId, // one to whom "subscriber" is subscribing
+  ref: "User",
+}
+
+
+This field stores the user who is being subscribed to (the "channel owner").
+It’s also an ObjectId referencing the User collection.
+Example: If Monu subscribes to Hitesh →
+subscriber = Monu’s _id
+
+channel = Hitesh’s _id
+
+So essentially:
+
+subscriber → follower
+
+channel → person being followed
+
+📌 timestamps: true
+{ timestamps: true }
+
+
+Automatically adds two fields:
+
+createdAt → when subscription was created
+
+updatedAt → when subscription was last modified
+
+📌 Model export
+export const subcriptions = new mongoose.model("subcriptions", subscriptionSchema)
+Creates a Mongoose model called "subcriptions" (typo: should be "subscriptions" ✅).
+This will create a MongoDB collection named subcriptions (lowercased, pluralized).
+Now you can use methods like subcriptions.find(), subcriptions.create(), etc.
+
+✅ Example
+
+If Monu follows Hitesh, the document in subscriptions collection will look like:
+
+{
+  "_id": "650f7f8c4f1a",
+  "subscriber": "64ffabc12345",  // Monu’s User ID
+  "channel": "64ffxyz67890",     // Hitesh’s User ID
+  "createdAt": "2025-09-23T14:20:00.000Z",
+  "updatedAt": "2025-09-23T14:20:00.000Z"
+} */
+  
+
+  
+  
+/// / ///////////////////////////////////////////////////////////////////////////////////////
+
+  
+  /**{ "_id": 1, "name": "Alice" }
+{ "_id": 2, "name": "Bob" }
+And your subcriptions collection has:
+
+json
+Copy code
+{ "subscriber": 101, "channel": 1 }
+{ "subscriber": 102, "channel": 1 }
+{ "subscriber": 103, "channel": 2 }
+If you run your $lookup:
+
+js
+Copy code
+$lookup: {
+  from: "subcriptions",
+  localField: "_id",
+  foreignField: "channel",
+  as: "subscriber"
+}
+The result will be:
+
+json
+Copy code
+{
+  "_id": 1,
+  "name": "Alice",
+  "subscriber": [
+    { "subscriber": 101, "channel": 1 },
+    { "subscriber": 102, "channel": 1 }
+  ]
+}
+{
+  "_id": 2,
+  "name": "Bob",
+  "subscriber": [
+    { "subscriber": 103, "channel": 2 }
+  ]
+}
+So the subscriber field is an array containing all subscription documents where the user is the channel.
+
+You can then easily count subscribers with:
+
+js
+Copy code
+{ $project: { name: 1, subscriberCount: { $size: "$subscriber" } } }
+Result:
+
+json
+Copy code
+{ "name": "Alice", "subscriberCount": 2 }
+{ "name": "Bob", "subscriberCount": 1 } */
+  
+
+  
+
   
   
   
 
   
   
+/**$lookup: {
+    from: "subcriptions",      // The collection to join with
+    localField: "_id",         // Field from the current collection (e.g., User)
+    foreignField: "channel",   // Field in "subcriptions" collection
+    as: "subscriber"           // Name of the new array field to hold matched docs
+}
+What it does:
+You have a User collection (or something similar) and a subcriptions collection.
+Each document in subcriptions represents a subscription: { subscriber: ObjectId, channel: ObjectId }.
+You want to know how many people have subscribed to a particular channel.
+
+Here’s the flow:
+For each document in your main collection (likely users), _id of that user is matched against channel in the subcriptions collection.
+All matching subscription documents are added as an array in the field subscriber.
+Later, you can count them using $size or $project:
+
+js
+Copy code
+{
+  $project: {
+    username: 1,
+    subscriberCount: { $size: "$subscriber" }
+  }
+}
+✅ This will give you each user and the number of subscribers they have. */
 
 
-  
-  
-  
 
-  
-  
-  
   
   
   
