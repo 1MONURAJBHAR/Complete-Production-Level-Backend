@@ -1,10 +1,11 @@
 import asyncHandler from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.model.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js"
 import { ApiResponce } from "../utils/ApiResponce.js"
 import { subcriptions } from "../models/subcription.model.js"
 import mongoose from "mongoose"
+import jwt from "jsonwebtoken"
 
 const registerUser = asyncHandler(async (req, res) => {
   //get user details from frontend
@@ -178,7 +179,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id, //This req.user will come from verifyJWT midleware
     {
-      $unset: { refreshToken: 1 },
+      $unset: { refreshToken: 1 },   //This removes the field from document
     },
     {
       new: true, //{ new: true } → Makes sure you get back the updated document instead of the old one.
@@ -202,7 +203,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 
 
-const refreahAccessToken = asyncHandler(async (req, res) => {
+const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
 
@@ -231,18 +232,18 @@ const refreahAccessToken = asyncHandler(async (req, res) => {
       secure: true,
     };
   
-    const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
       user._id
     );
   
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newRefreshToken, options)
+      .cookie("refreshToken", refreshToken, options)
       .json(
         new ApiResponce(
           200,
-          { accessToken, refreshToken: newRefreshToken },
+          { accessToken, refreshToken },
           "Access token refreshed"
         )
       );
@@ -337,7 +338,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   user.avatar = avatar.url
   await user.save({ validateBeforeSave: false})*/
-/****************OR************************** */
+  /****************OR************************** */
   /*const user = await User.findByIdAndUpdate( 
     req.user?._id,
     {
@@ -368,7 +369,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponce(200, user, "Avatar Updated successfully"));
+    .json(new ApiResponce(200, req.user, "Avatar Updated successfully")); //use "req.user"-->coming from verifyJWT(automatically excludes refreshToken and password) not "user"--> coming from DB(cantain all whole document information)
 })
 
 
@@ -420,7 +421,7 @@ const updateUserCoverimage = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponce(200, user, "Cover image Updated successfully"));
+    .json(new ApiResponce(200, req.user, "Cover image Updated successfully"));  //use "req.user"-->coming from verifyJWT(automatically excludes refreshToken and password) not "user"--> coming from DB(cantain all whole document information)
 })
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
@@ -501,10 +502,12 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 })
 
 const getWatchHistory = asyncHandler(async (req, res) => {
+  //console.log(req.user._id); --> for debugging
+  
   const user = await User.aggregate([
     {
       $match: {
-         _id: mongoose.Types.ObjectId(req.user._id)
+         _id: req.user._id
        }
     },
     {
@@ -561,7 +564,7 @@ export {
   registerUser,
   loginUser,
   logoutUser,
-  refreahAccessToken,
+  refreshAccessToken,
   changeCurrentPassword,
   getCurrentUser,
   updateAccountDetails,

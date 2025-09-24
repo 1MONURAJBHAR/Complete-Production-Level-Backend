@@ -3,7 +3,7 @@ import {
   loginUser,
   logoutUser,
   registerUser,
-  refreahAccessToken,
+  refreshAccessToken,
   changeCurrentPassword,
   getCurrentUser,
   updateAccountDetails,
@@ -36,7 +36,7 @@ router.route("/login").post(loginUser)
 
 //secured routes -->i.e: user must be loggedin
 router.route("/logout").post(verifyJWT, logoutUser)
-router.route("/refresh-token").post(refreahAccessToken);
+router.route("/refresh-token").post(refreshAccessToken);
 router.route("/change-passwrod").post(verifyJWT,changeCurrentPassword)
 router.route("/current-user").get(verifyJWT, getCurrentUser)
 router.route("/update-account").patch(verifyJWT, updateAccountDetails)
