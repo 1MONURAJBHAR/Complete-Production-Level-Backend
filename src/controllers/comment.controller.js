@@ -18,9 +18,10 @@ const getVideoComments = asyncHandler(async (req, res) => {
     //Runs a MongoDB aggregation pipeline on the Comment collection.
     {
       $match: {
-        //this will find inside the comments collection to that comment document whose (video: videoId) matches to this videoId.
+        //this will find inside the "comments collection"to that comment document whose (video: videoId) matches to this videoId.
         //  And will return to that single comment document for next stage, for the next stage this single comment document will be treated as original document.
-        video: videoId,
+        video: videoId,  //hame bahut saare comment documents milenge comment collection ke andar jinki video field ki id same hogi videoId se, but owner id har ek document ki different hogi because,
+                         // same video per bahut log comment kar sakte hai
       },
     },
     {
