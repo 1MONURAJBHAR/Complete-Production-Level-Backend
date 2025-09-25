@@ -4,15 +4,21 @@ const subscriptionSchema = new Schema(
   {
     subscriber: {
       type: Schema.Types.ObjectId, //one who is subscribing
-      ref: "User",
+      ref: "User", // The user who subscribes (follower)
     },
     channel: {
       type: Schema.Types.ObjectId, //one to whom "subscriber" is subscribing
-      ref: "User",
+      ref: "User",    // The user being subscribed to (followed)
     },
   },
   { timestamps: true }
+
+  /* Good practice: prevent duplicate subscriptions (unique pair of subscriber+channel)
+code--> subscriptionSchema.index({ subscriber: 1, channel: 1 }, { unique: true });*/
+
 );
+
+
 
 export const subcriptions = new mongoose.model("subcriptions", subscriptionSchema)
 
