@@ -53,17 +53,16 @@ const getChannelStats = asyncHandler(async (req, res) => {
 
 const getChannelVideos = asyncHandler(async (req, res) => {
   // TODO: Get all the videos uploaded by the channel
-  const channelId = req.params.channelId || req.user._id;
+  const channelId = req.params.channelId || req.user._id; //channel = logged-in user, This channelId is taking from users.
 
-  const videos = await Video.find({ owner: channelId })//Iss "channelId" se matching saare "owner" field vale video document collect karo from videos collection in DB ,i.e: match each owner field of all video document inside the Video collection with the provided channelId and collect all document & apply next line of code on these documents
-    .populate("owner", "username avatar")  //Replace the IDs with their actual documents
-    .sort({ createdAt: -1 })  //sort the videos in decending order of their createdAt(i.e: the first created video will be at bottom and the last created video will be at the top)
-                              //So that we get the latest video on the top
+  const videos = await Video.find({ owner: channelId }) //Iss "channelId" se matching saare "owner" field vale video document collect karo from videos collection in DB ,i.e: match each owner field of all video document inside the Video collection with the provided channelId and collect all video document & apply next line of code on these video documents
+    .populate("owner", "username avatar") //Replace the IDs with their actual documents,"owner" ID ko populate karo username & avatar se, owner is also a user so we can populate it with username and avatar
+    .sort({ createdAt: -1 }); //sort the videos in decending order of their createdAt(i.e: the first created video will be at bottom and the last created video will be at the top)
+  //So that we get the latest video on the top
 
   return res
     .status(200)
-    .json(new ApiResponse(200, videos, "Channel videos fetched successfully"))
-  
+    .json(new ApiResponse(200, videos, "Channel videos fetched successfully"));
 });
 
 export { getChannelStats, getChannelVideos };
