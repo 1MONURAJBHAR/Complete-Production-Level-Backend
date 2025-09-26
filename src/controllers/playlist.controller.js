@@ -76,7 +76,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(200, "Invalid playlist or video ID");
   }
   
-  const playlist = await findByIdAndUpdate(
+  const playlist = await Playlist.findByIdAndUpdate(
     playlistId,
     {
       $addToSet: { video: videoId } //prevents duplicate
@@ -146,7 +146,7 @@ const deletePlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Playlist not found");
   }
 
-  return res.status(200).json(new ApiResponce(404, "Playlist not found"));
+  return res.status(200).json(new ApiResponce(200, "Playlist deleted succcessfully"));
   
 });
 

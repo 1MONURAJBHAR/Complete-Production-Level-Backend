@@ -20,8 +20,8 @@ const getVideoComments = asyncHandler(async (req, res) => {
       $match: {
         //this will find inside the "comments collection"to that comment document whose (video: videoId) matches to this videoId.
         //  And will return to that single comment document for next stage, for the next stage this single comment document will be treated as original document.
-        video: videoId,  //hame bahut saare comment documents milenge comment collection ke andar jinki video field ki id same hogi videoId se, but owner id har ek document ki different hogi because,
-                         // same video per bahut log comment kar sakte hai
+        video: videoId, //hame bahut saare comment documents milenge comment collection ke andar jinki video field ki id same hogi videoId se, but owner id har ek document ki different hogi because,
+        // same video per bahut log comment kar sakte hai
       },
     },
     {
@@ -44,7 +44,8 @@ const getVideoComments = asyncHandler(async (req, res) => {
       },
     },
     {
-      $unwind: "$owner",
+      $unwind:
+        "$owner" /**Turns the owner array (from $lookup) into a single object. So instead of:"owner": [ { "username": "monu" } ]   you get:"owner": { "username": "monu" }.Basically: remove array wrapper → get plain object. */,
     },
     {
       $sort: { createdAt: -1 },

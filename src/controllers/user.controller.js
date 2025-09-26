@@ -869,7 +869,7 @@ Copy code
   
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /**Got it 👍 Let’s break down your subscriptionSchema line by line:
 
 📌 subscriber
@@ -1384,3 +1384,21 @@ app.get("/search", (req, res) => {
 ✅ Easy way to remember:
 params = part of the path
 query = after the ? in the URL*/
+
+/////*///////////////////////////*///////////////////////*//////////////////////*//////////////////////////////////////////*//////////////////////////////////////////////
+/**if one user logins then another automatically logouts
+ChatGPT said:
+
+Ah 👍 that usually happens because of how you’re handling authentication tokens (JWT/session).
+
+🔍 Why this happens
+
+Single token stored globally (server-side)
+
+If you store the token in your DB under user.token and overwrite it every time someone logs in →
+when the same user logs in from another device/browser, the old token is replaced.
+🔹 Result → first session becomes invalid → that user is “logged out”.
+Session-based auth with single session per user
+If you’re using sessions in Mongo/Redis and only keep one active session per user, new login deletes old one.
+Cookie overwritten
+If you’re storing JWT/session ID in a cookie without handling multiple devices separately, the cookie might be replaced. */

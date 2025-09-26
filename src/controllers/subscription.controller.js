@@ -73,6 +73,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
 
   const channels = await Subscription.find({ subscriber: subscriberId }).populate("channel", "fullName username avatar");
 
+
   
   if (!channels) {
     throw new ApiError(400, "Channel does not exist");
@@ -87,5 +88,33 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
 
 export { toggleSubscription, getUserChannelSubscribers, getSubscribedChannels };
 
+/**The key here is what find() returns in Mongoose:
+Model.find(...) always returns an array.
+If no documents match, it returns an empty array ([]), not null.
+Only findOne() or findById() can return null when nothing is found.
 
+Your code:
+const channels = await Subscription.find({ subscriber: subscriberId }).populate("channel", "fullName username avatar");
+
+if (!channels) {
+  throw new ApiError(400, "Channel does not exist");
+}
+
+
+channels will be [] if you haven’t subscribed to any channel.
+[] is truthy in JavaScript, so the if (!channels) check will not run.
+
+✅ Fix
+Check if the array is empty instead:
+
+if (!channels || channels.length === 0) {
+  throw new ApiError(400, "Channel does not exist");
+}
+
+Extra Tip
+If you just want to return an empty list (instead of an error), you can safely do:
+
+return res.status(200).json(
+  new ApiResponse(200, channels, "Subscribed channels fetched successfully")
+); */
 

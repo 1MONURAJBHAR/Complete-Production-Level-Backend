@@ -28,7 +28,8 @@ const createTweet = asyncHandler(async (req, res) => {
 // ✅ Get all tweets of a particular user
 const getUserTweets = asyncHandler(async (req, res) => {
   // TODO: get user tweets
-  const { userId } = req.params;
+  const { userId } = req.params; 
+  //console.log(userId);
 
   // 1. Validate userId
   if (!mongoose.isValidObjectId(userId)) {
@@ -85,9 +86,9 @@ const updateTweet = asyncHandler(async (req, res) => {
   if (!content || content.trim() === "") {
     throw new ApiError(400, "Tweet content is required");
   }
+  //console.log(tweetId);               //findById--> srif tweet document ki "_id" i.e: document ki tweetId ko match karega provided/given tweetId ke saath 
+  const tweet = await Tweet.findById(tweetId); /**Model.findById(id), A shorthand for: Model.findOne({ _id: id }) It looks for a single document whose _id matches the given id. */
 
-  const tweet = await Tweet.findById(tweetId);
-  
   if (!tweet) {
     throw new ApiError(400, "Tweet not found");
   }
@@ -100,11 +101,9 @@ const updateTweet = asyncHandler(async (req, res) => {
   tweet.content = content;
   await tweet.save();
 
-
   return res
     .status(200)
     .json(new ApiResponce(400, tweet, "Tweet updated successfully"));
-
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
@@ -115,13 +114,14 @@ const deleteTweet = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid tweet ID");
   }
 
-  const tweet = await findById(tweetId);
+  const tweet = await Tweet.findById(tweetId);
 
   if (!tweet) {
     throw new ApiError(400, "Tweet not found");
   }
-
-  if (tweet.owner.toString() !== req.user._id) {
+  //console.log(req.user._id);
+  
+  if (tweet.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(400, "You are not allowed to delete this tweet");
   }
 

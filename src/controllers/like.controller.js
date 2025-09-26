@@ -3,6 +3,7 @@ import { Like } from "../models/like.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponce } from "../utils/ApiResponce.js";
 import  asyncHandler  from "../utils/asyncHandler.js";
+import { Video } from "../models/video.model.js";
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
   //TODO: toggle like on video
@@ -19,11 +20,11 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   if (existingLike) { //if existingLike document exist it means the video is liked by the user
     //To unlike delete the existingLike document
     await existingLike.deleteOne(); //deleteOne() deletes the entire Like document, not just a field.
-    return res.json(new ApiResponce(200, "Video Unliked"));
+    return res.status(200).json(new ApiResponce(200, "Video Unliked"));
   } else {
     //Like  ,//Creates a new Like document linking the user and video.
-    await Like.create({ video: videoId, likedBy: userId });
-    return res.status(200).json(new ApiResponce(200, "Video Liked"));
+    const likeddoc = await Like.create({ video: videoId, likedBy: userId });
+    return res.status(200).json(new ApiResponce(200, likeddoc, "Video Liked"));
   }
 });
 
@@ -42,10 +43,10 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
   if (existingLike) {
     //if this document exist means the user has liked the video,for toggling/unliking it delete this document
     await existingLike.deleteOne();
-    return res.json(new ApiResponce(200,"Comment Unliked"))
+    return res.status(200).json(new ApiResponce(200, "Comment Unliked"));
   } else {
-    await Like.create({ comment: commentId, likedBy: userId })
-    return res.status(200).json(new ApiResponce(200,"Comment Liked"))
+    const commentLiked = await Like.create({ comment: commentId, likedBy: userId })
+    return res.status(200).json(new ApiResponce(200, commentLiked, "Comment Liked"));
   }
 
 });
@@ -66,8 +67,8 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
     await existingLike.deleteOne();
     return res.status(200).json(new ApiResponce(400,"Tweet Unliked"))
   } else {
-    await Like.create({ comment: commentId, likedBy: userId })
-    return res.status(200).json(new ApiResponce(400, "Tweet liked"))
+    const tweetLiked = await Like.create({ tweet: tweetId, likedBy: userId });
+    return res.status(200).json(new ApiResponce(400,tweetLiked ,"Tweet liked"))
   }
 
 
@@ -78,21 +79,79 @@ const getLikedVideos = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new ApiError(400,"Invalid user ID")
+    throw new ApiError(400, "Invalid user ID");
   }
 
+  //***************This code finds all liked document by a specific userId and populates only videoId****************************** */
   //find likes of this user and populates videos
   //give me that all like documents from likes collection whose likedBy fields userId matches this userId
-  const likedVideos = await Like.find({ likedBy: userId }).populate({
+  /* const likedVideos = await Like.find({ likedBy: userId }).populate({
     path: "video", //populate it with all fields
     populate: {  //populating inside the video,& video has owner
       path: "owner", //populate it with selective fields, "owner is also the user"
       salect: "username fullName avatar", // only these fields from User
     },
   })
-  .sort({ createdAt: -1 }) //most recent likes first
+  .sort({ createdAt: -1 }) //most recent likes first*/
+
+  // const videosOnly = likedVideos.map((like) => like.video);
+
+  /*return res
+    .status(200)
+    .json(new ApiResponce(200, videosOnly, "Liked video fetched successfully"));*/
+
+  //This will find all the liked videos document //*******Explanation below************** */
+  const likedVideoIds = await Like.find({ likedBy: userId }).distinct("video");
+
+  const videosOnly = await Video.find({ _id: { $in: likedVideoIds } })
+    .populate("owner", "username fullName avatar")
+    .sort({ createdAt: -1 });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponce(200, videosOnly, "Liked videos fetched successfully")
+    );
+
   
-  return res.status(200).json(new ApiResponce(200, likedVideos, "Liked video fetched successfully"))
+  //Explanation
+  /**1. .distinct("video")
+When you write:
+const likedVideoIds = await Like.find({ likedBy: userId }).distinct("video");
+
+Like.find({ likedBy: userId }) → finds all documents in the Like collection where likedBy = this user.
+.distinct("video") → instead of returning the full documents, it extracts unique values from the video field.
+So you get an array of unique video IDs that the user has liked.
+
+👉 Example:
+
+Likes collection:
+[
+  { likedBy: 123, video: "a1" },
+  { likedBy: 123, video: "a2" },
+  { likedBy: 123, video: "a1" } // duplicate
+]
+
+likedVideoIds = ["a1", "a2"] // distinct removes duplicates
+
+2. _id: { $in: likedVideoIds }
+Now you query the Video collection:
+const videosOnly = await Video.find({ _id: { $in: likedVideoIds } });
+
+
+_id → MongoDB’s primary key for each video.
+{ $in: likedVideoIds } → means “give me all videos whose _id is inside this array”.
+
+👉 Example:
+
+likedVideoIds = ["a1", "a2"]
+Video.find({ _id: { $in: ["a1", "a2"] } })
+
+This will return all video documents with IDs a1 and a2.
+
+✅ In short:
+.distinct("video") → get unique video IDs the user liked.
+_id: { $in: likedVideoIds } → fetch full video documents whose IDs match those. */
 });
 
 export { toggleCommentLike, toggleTweetLike, toggleVideoLike, getLikedVideos };
