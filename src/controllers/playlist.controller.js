@@ -1,8 +1,8 @@
 import mongoose, { isValidObjectId } from "mongoose";
 import { Playlist } from "../models/playlist.model.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiResponce } from "../utils/ApiResponce.js";
+import  asyncHandler from "../utils/asyncHandler.js";
 
 // Create a new playlist
 const createPlaylist = asyncHandler(async (req, res) => {
@@ -22,7 +22,7 @@ const createPlaylist = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json(new ApiResponse(201, playlist, "Playlist created successfully"));
+    .json(new ApiResponce(201, playlist, "Playlist created successfully"));
 
 });
 
@@ -39,7 +39,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, playlists, "user playlist fetched successfully"))
+    .json(new ApiResponce(200, playlists, "user playlist fetched successfully"))
   
 
 });
@@ -62,7 +62,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, playlist, "Playlist fetched successfully"));
+    .json(new ApiResponce(200, playlist, "Playlist fetched successfully"));
   
 
 });
@@ -93,7 +93,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, playlist, "Video added to playlist"));
+    .json(new ApiResponce(200, playlist, "Video added to playlist"));
 
 });
 
@@ -128,7 +128,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, playlist, "Video removed from playlist"));
+    .json(new ApiResponce(200, playlist, "Video removed from playlist"));
 });
 
 // Delete a playlist
@@ -146,9 +146,7 @@ const deletePlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Playlist not found");
   }
 
-  return res
-    .status(200)
-    .json(404, "Playlist not found")
+  return res.status(200).json(new ApiResponce(404, "Playlist not found"));
   
 });
 
@@ -174,7 +172,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, playlist, "Playlist updated successfully"));
+    .json(new ApiResponce(200, playlist, "Playlist updated successfully"));
 
 });
 

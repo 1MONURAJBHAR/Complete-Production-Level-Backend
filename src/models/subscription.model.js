@@ -20,7 +20,7 @@ code--> subscriptionSchema.index({ subscriber: 1, channel: 1 }, { unique: true }
 
 
 
-export const subcriptions = new mongoose.model("subcriptions", subscriptionSchema)
+export const Subscription = new mongoose.model("Subscription", subscriptionSchema);
 
 
 

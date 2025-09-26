@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.model.js"
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js"
 import { ApiResponce } from "../utils/ApiResponce.js"
-import { subcriptions } from "../models/subcription.model.js"
+import { Subscription } from "../models/subscription.model.js";
 import mongoose from "mongoose"
 import jwt from "jsonwebtoken"
 
@@ -441,7 +441,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     {
       $lookup: {
         //channel ko kitne logo ne subscribe kiya
-        from: "subcriptions",
+        from: "Subscription",
         localField: "_id",
         foreignField: "channel",
         as: "subscribers", //subscribers field-->(array of objects) ko add kar do user document me, isme saare subscriptions ke objects jinki channel ki id meri local id se match kar rhi hai, vo hai.
@@ -450,7 +450,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     {
       $lookup: {
         //user ne kitne channel jo subscribe kiya
-        from: "subcriptions",
+        from: "Subscription",
         localField: "_id",
         foreignField: "subscriber",
         as: "subscribedTo", //subscribedTo field-->(array of objects) ko add kar do user document me, isme saare subscriptions ke objects jinki subcriber ki id meri local id se match kar rhi hai, vo hai.
@@ -466,10 +466,11 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
           $size: "$subscribedTo",
         },
         isSubscribed: {
-          $cond: {   //$in ---> ye array and objects dono ke andar dekhta hai
+          $cond: {
+            //$in ---> ye array and objects dono ke andar dekhta hai
             if: { $in: [req.user?.id, "$subscribers.subscriber"] },
             then: true,
-            else: false
+            else: false,
           },
         },
       },
@@ -483,11 +484,9 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         isSubscribed: 1,
         avatar: 1,
         coverimage: 1,
-        email: 1
-      }
-    }
-
-  
+        email: 1,
+      },
+    },
   ]);
 
   if (!channel?.length) {

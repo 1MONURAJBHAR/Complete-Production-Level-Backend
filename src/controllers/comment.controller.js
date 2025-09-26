@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import { Comment } from "../models/comment.model.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiResponce } from "../utils/ApiResponce.js";
+import  asyncHandler  from "../utils/asyncHandler.js";
 
 // GET all comments for a video with pagination
 const getVideoComments = asyncHandler(async (req, res) => {
@@ -60,7 +60,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
   
   return res
     .status(200)
-    .json(new ApiResponse(200, paginatedComments, "Comments fetched successfully"))
+    .json(new ApiResponce(200, paginatedComments, "Comments fetched successfully"))
   
 });
 
@@ -86,7 +86,7 @@ const addComment = asyncHandler(async (req, res) => {
     
   return res
     .status(201)
-    .json(new ApiResponse(201, comment, "comment added successfully"));
+    .json(new ApiResponce(201, comment, "comment added successfully"));
   
     
 });
@@ -117,7 +117,7 @@ const updateComment = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, comment, "Comment updated successfully"))
+    .json(new ApiResponce(200, comment, "Comment updated successfully"))
   
 
 });
@@ -145,7 +145,7 @@ const deleteComment = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, comment, "Comment deleted successfully"))
+    .json(new ApiResponce(200, comment, "Comment deleted successfully"))
   
 
 });

@@ -2,8 +2,8 @@ import mongoose, { isValidObjectId } from "mongoose";
 import { Video } from "../models/video.model.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiResponce } from "../utils/ApiResponce.js";
+import  asyncHandler  from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -35,9 +35,9 @@ const getAllVideos = asyncHandler(async (req, res) => {
   pipeline.push({
     //This adds owner details (username & email) from the users collection into each video.
     $lookup: {
-      from: "user",
-      localfield: "owner",
-      foreignfield: "_id",
+      from: "users",
+      localField: "owner",
+      foreignField: "_id",
       as: "owner",
       pipeline: [{ $project: { username: 1, email: 1 } }],
     },
@@ -48,12 +48,13 @@ const getAllVideos = asyncHandler(async (req, res) => {
   //sort
   pipeline.push({
     //: If sortBy=views&sortType=desc, results will be sorted by most viewed first.
-    $sort: { [sortBy]: sortType === "asc" ? 1 : -1 },
+    $sort: { [sortBy || "createdAt"]: sortType === "asc" ? 1 : -1 },
   });
-
+  /**If sortBy is undefined (user didn’t pass query param), $sort: { undefined: -1 } is invalid.
+    You should provide a default sort: */
   const options = {
     page: parseInt(page),
-    limit: parseIn(limit),
+    limit: parseInt(limit),
   };
 
   const videos = await Video.aggregatePaginate(
@@ -75,7 +76,7 @@ Basically, aggregation is used for reporting, analytics, and transforming data. 
 
   return res
     .status(200)
-    .json(new ApiResponse(200, videos, "Videos fetched successfully"));
+    .json(new ApiResponce(200, videos, "Videos fetched successfully"));
 });
 
 //upload a video
@@ -86,14 +87,16 @@ const publishAVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Title and description are required");
   }
 
-  if (!req.files || !req.files.video || !req.files.thumbnail) {
+  if (!req.files || !req.files.videoFile || !req.files.thumbnail) {
     throw new ApiError(400, "Video file and thumbnail are required");
   }
+ //console.log(req.files);
+ 
 
   //upload to cloudinary
-  const videoFile = await uploadOnCloudinary(req.file.video[0].path);
+  const videoFile = await uploadOnCloudinary(req.files.videoFile[0].path);
   const thumbnailFile = await uploadOnCloudinary(req.files.thumbnail[0].path);
-
+  //console.log(videoFile)
   if (!videoFile?.url) {
     throw new ApiError(500, "Video upload failed");
   }
@@ -104,15 +107,16 @@ const publishAVideo = asyncHandler(async (req, res) => {
   const video = await Video.create({
     title,
     description,
-    videoFile: videoFile.url,
-    thumbnail: thumbnail.url,
+    videoFile: videoFile.secure_url,
+    thumbnail: thumbnailFile.secure_url,
     owner: req.user._id, // logged-in user
     isPublished: true,
+    duration: videoFile.duration,
   });
 
   return res
     .status(201)
-    .json(new ApiResponse(201, video, "Video published successfully"));
+    .json(new ApiResponce(201, video, "Video published successfully"));
   
 
 });
@@ -132,7 +136,7 @@ const getVideoById = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, video, "video fetched successfully"));
+    .json(new ApiResponce(200, video, "video fetched successfully"));
   
 
 });
@@ -151,13 +155,13 @@ const updateVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid video ID");
   }
 
-  const video = await findById(videoId);
+  const video = await Video.findById(videoId);
   if (!video) {
     throw new ApiError(404, "Video not found");
   }
 
   //Only owner can update
-  if (video.owner.toString() !== req.user._id) {
+  if (video.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You cannot update this video");
   }
 
@@ -167,15 +171,15 @@ const updateVideo = asyncHandler(async (req, res) => {
 
   const thumbnailFile = await uploadOnCloudinary(req.file.path);
 
-  if (thumbnailFile.url) {
-    video.thumbnail = thumbnailFile.url;
+  if (thumbnailFile.secure_url) {
+    video.thumbnail = thumbnailFile.secure_url;
   }
 
   await video.save()
 
   return res
     .status(200)
-    .json(new ApiResponse(200, video, "Video updated successfully"));
+    .json(new ApiResponce(200, video, "Video updated successfully"));
   
 
 });
@@ -207,7 +211,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, videodeleted,"Video deleted successfully"));
+    .json(new ApiResponce(200, videodeleted,"Video deleted successfully"));
 
 });
 
@@ -230,13 +234,14 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     throw new ApiError(400, "You are not allowed to toggle the publish flag");
   }
 
-  video.isPublished = !video.isPublished;
-
+  video.ispublished = !video.ispublished;
+  console.log(video.ispublished);
+  
   await video.save();
 
   return res
     .status(200)
-    .json(new ApiResponse(200, video, `Video ${video.isPublished ? "published" : "unpublished"} successfully`))
+    .json(new ApiResponce(200, video, `Video ${video.ispublished ? "published" : "unpublished"} successfully`))
   
 });
 
@@ -253,6 +258,183 @@ export {
 
 
 
+  
+  
+  
+  
+  
+  
+  
+  /***************************************OutputExampleOf_getAllVideos*************************************** */
+
+  /**"statusCode": 200,
+    "data": {
+        "docs": [
+            {
+                "_id": "68d659a72aa9a3b146e6c529",
+                "videoFile": "https://res.cloudinary.com/dddj9gqwz/video/upload/v1758878113/dax8ihozzzgy8cdrwf9y.mp4",
+                "thumbnail": "https://res.cloudinary.com/dddj9gqwz/image/upload/v1758878118/snmyvbsqn3ww797bincn.jpg",
+                "title": "First_video",
+                "description": "This is my first video",
+                "duration": 16.020363,
+                "views": 0,
+                "ispublished": true,
+                "owner": {
+                    "_id": "68d64dc6b58b639f39cfcfcd",
+                    "username": "piyushapatil",
+                    "email": "piyush123@gmal.com"
+                },
+                "createdAt": "2025-09-26T09:15:19.777Z",
+                "updatedAt": "2025-09-26T09:15:19.777Z",
+                "__v": 0
+            },
+            {
+                "_id": "68d65fb42aa9a3b146e6c52c",
+                "videoFile": "https://res.cloudinary.com/dddj9gqwz/video/upload/v1758879665/ot66hvc6dgsjgariuaf1.mp4",
+                "thumbnail": "https://res.cloudinary.com/dddj9gqwz/image/upload/v1758879668/trzoxtrjvcssdmui7vnb.jpg",
+                "title": "second video",
+                "description": "This is my second video",
+                "duration": 47.576281,
+                "views": 0,
+                "ispublished": true,
+                "owner": {
+                    "_id": "68d64dc6b58b639f39cfcfcd",
+                    "username": "piyushapatil",
+                    "email": "piyush123@gmal.com"
+                },
+                "createdAt": "2025-09-26T09:41:08.914Z",
+                "updatedAt": "2025-09-26T09:41:08.914Z",
+                "__v": 0
+            },
+            {
+                "_id": "68d661552aa9a3b146e6c532",
+                "videoFile": "https://res.cloudinary.com/dddj9gqwz/video/upload/v1758880083/jpy23ljs8wlue5g0oqdd.mp4",
+                "thumbnail": "https://res.cloudinary.com/dddj9gqwz/image/upload/v1758880084/awmptvg0izogesatlhxq.jpg",
+                "title": "third video",
+                "description": "This is my third video",
+                "duration": 57.631563,
+                "views": 0,
+                "ispublished": true,
+                "owner": {
+                    "_id": "68d64dc6b58b639f39cfcfcd",
+                    "username": "piyushapatil",
+                    "email": "piyush123@gmal.com"
+                },
+                "createdAt": "2025-09-26T09:48:05.542Z",
+                "updatedAt": "2025-09-26T09:48:05.542Z",
+                "__v": 0
+            },
+            {
+                "_id": "68d661ea2aa9a3b146e6c535",
+                "videoFile": "https://res.cloudinary.com/dddj9gqwz/video/upload/v1758880232/mhpjtgux4ucrkba1lpiw.mp4",
+                "thumbnail": "https://res.cloudinary.com/dddj9gqwz/image/upload/v1758880233/orr6npux5gicvlwrvsux.jpg",
+                "title": "fourth video",
+                "description": "This is my fourth video",
+                "duration": 19.157333,
+                "views": 0,
+                "ispublished": true,
+                "owner": {
+                    "_id": "68d64dc6b58b639f39cfcfcd",
+                    "username": "piyushapatil",
+                    "email": "piyush123@gmal.com"
+                },
+                "createdAt": "2025-09-26T09:50:34.360Z",
+                "updatedAt": "2025-09-26T09:50:34.360Z",
+                "__v": 0
+            }
+        ],
+        "totalDocs": 4,
+        "limit": 10,
+        "page": 1,
+        "totalPages": 1,
+        "pagingCounter": 1,
+        "hasPrevPage": false,
+        "hasNextPage": false,
+        "prevPage": null,
+        "nextPage": null
+    },
+    "message": "Videos fetched successfully",
+    "success": true
+} */
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+  
+  
+
+
+  
+
+  
+
+
+
+  
+
+
+/**if (query) {
+  pipeline.push({ $match: { title: { $regex: query, $options: "i" } } });
+}
+
+if (userId) {
+  pipeline.push({ $match: { owner: userId } });
+}
+Key point: $match stages are cumulative (AND)
+Aggregation pipelines process stages sequentially.
+Each $match filters the current set of documents.
+So if you have two $match stages, the result is only documents that satisfy both conditions.
+
+Example:
+Suppose your collection has 5 videos by userId X.
+Suppose 3 videos contain "funny" in the title.
+Then after your two $match stages:
+
+js
+Copy code
+$match { title: /funny/i }   // matches 3 videos
+$match { owner: userId }     // keeps only videos from that user
+Final count = videos that match BOTH conditions.
+
+So if 2 of the "funny" videos belong to that user → final result = 2 videos.
+
+✅ It’s logical AND, not OR.
+
+Optional: logical OR
+If you wanted all videos that either match query OR userId, you would use a single $match with $or:
+
+js
+Copy code
+$match: {
+  $or: [
+    { title: { $regex: query, $options: "i" } },
+    { owner: new mongoose.Types.ObjectId(userId) }
+  ]
+}
+This will return any video that matches either condition.
+In your current code, MongoDB takes the intersection, so the number of videos = only the ones matching both query and userId. */
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+  
 
 
 /**req.file how this will look

@@ -1,8 +1,8 @@
 import mongoose, { isValidObjectId } from "mongoose";
 import { Like } from "../models/like.model.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiResponce } from "../utils/ApiResponce.js";
+import  asyncHandler  from "../utils/asyncHandler.js";
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
   //TODO: toggle like on video
@@ -19,11 +19,11 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   if (existingLike) { //if existingLike document exist it means the video is liked by the user
     //To unlike delete the existingLike document
     await existingLike.deleteOne(); //deleteOne() deletes the entire Like document, not just a field.
-    return res.json(new ApiResponse(200, "Video Unliked"));
+    return res.json(new ApiResponce(200, "Video Unliked"));
   } else {
     //Like  ,//Creates a new Like document linking the user and video.
     await Like.create({ video: videoId, likedBy: userId });
-    return res.status(200).json(new ApiResponse(200, "Video Liked"));
+    return res.status(200).json(new ApiResponce(200, "Video Liked"));
   }
 });
 
@@ -42,10 +42,10 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
   if (existingLike) {
     //if this document exist means the user has liked the video,for toggling/unliking it delete this document
     await existingLike.deleteOne();
-    return res.json(new ApiResponse(200,"Comment Unliked"))
+    return res.json(new ApiResponce(200,"Comment Unliked"))
   } else {
     await Like.create({ comment: commentId, likedBy: userId })
-    return res.status(200).json(new ApiResponse(200,"Comment Liked"))
+    return res.status(200).json(new ApiResponce(200,"Comment Liked"))
   }
 
 });
@@ -64,10 +64,10 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 
   if (existingLike) {
     await existingLike.deleteOne();
-    return res.status(200).json(new ApiResponse(400,"Tweet Unliked"))
+    return res.status(200).json(new ApiResponce(400,"Tweet Unliked"))
   } else {
     await Like.create({ comment: commentId, likedBy: userId })
-    return res.status(200).json(new ApiResponse(400, "Tweet liked"))
+    return res.status(200).json(new ApiResponce(400, "Tweet liked"))
   }
 
 
@@ -92,7 +92,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
   })
   .sort({ createdAt: -1 }) //most recent likes first
   
-  return res.status(200).json(new ApiResponse(200, likedVideos, "Liked video fetched successfully"))
+  return res.status(200).json(new ApiResponce(200, likedVideos, "Liked video fetched successfully"))
 });
 
 export { toggleCommentLike, toggleTweetLike, toggleVideoLike, getLikedVideos };

@@ -2,8 +2,8 @@ import mongoose, { isValidObjectId } from "mongoose";
 import { User } from "../models/user.model.js";
 import { Subscription } from "../models/subscription.model.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import {ApiResponce } from "../utils/ApiResponce.js";
+import  asyncHandler from "../utils/asyncHandler.js";
 
 const toggleSubscription = asyncHandler(async (req, res) => {
   // TODO: toggle subscription
@@ -29,7 +29,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     await existing.deleteOne();
     return res
       .status(200)
-      .json(new ApiResponse(200, null, "Unsubscribed Successfully"));
+      .json(new ApiResponce(200, null, "Unsubscribed Successfully"));
   } else {
     //subscribe
     const subscription = await Subscription.create({
@@ -39,7 +39,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 
     return res
       .status(201)
-      .json(new ApiResponse(201, subscription, "Subscribed Successfully"));
+      .json(new ApiResponce(201, subscription, "Subscribed Successfully"));
   }
 
 });
@@ -57,7 +57,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, subscribers, "Subscribers fetched successfully"))
+    .json(new ApiResponce(200, subscribers, "Subscribers fetched successfully"))
   
 
 });
@@ -80,7 +80,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, channels, "channels fetched successfully"));
+    .json(new ApiResponce(200, channels, "channels fetched successfully"));
   
 
 });
