@@ -35,8 +35,8 @@ const getUserTweets = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid user ID");
   }
 
-  // 2. Find all tweets where "owner" = userId
-  const tweets = await Tweet.find({ owner: userId })
+  // 2. Find all Tweet documents where "owner" = userId
+  const tweets = await Tweet.find({ owner: userId })//Is userId ne alag alag tweets kiye honge, un sab tweet ke liye alag alag document banega tweet collection ke andar,un docs ko find karo ,aur owner filed populate karo
     .populate("owner", "username email") //// joins user details
     .sort({ createdAt: -1 }); // newest tweet first
   
@@ -92,7 +92,7 @@ const updateTweet = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Tweet not found");
   }
 
-  //only owner can update
+  //only owner can update tweet
   if (tweet.owner.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You are not allowed to update this tweet");
   }
