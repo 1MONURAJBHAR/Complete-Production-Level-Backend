@@ -12,7 +12,8 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {   // res -->no u
      const token =
        req.cookies?.accessToken ||
        req.header("Authorization")?.replace("Bearer ", "");
-   
+      //console.log(token);
+      
      if (!token) {
        throw new ApiError(401, "Unauthorized request");
      }
@@ -34,6 +35,96 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {   // res -->no u
     throw new ApiError(401, error?.meaasge || "Invalid access token there")
  }
 })
+
+
+
+
+//from Authorization header
+/**import jwt from "jsonwebtoken";
+
+export const verifyJWT = (req, res, next) => {
+  try {
+    const authHeader = req.headers["authorization"];
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+    req.user = decoded; // attach decoded payload to req
+    next();
+  } catch (error) {
+    console.error("JWT verification error:", error.message);
+    return res.status(401).json({ message: "Invalid access token there" });
+  }
+};
+
+ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**req.user = user; → stores the logged-in user object in the request.
 Makes the user available across middlewares & route handlers.

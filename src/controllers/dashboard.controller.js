@@ -40,7 +40,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
   //count subscribers
   const totalSubscribers = await Subscription.countDocuments({ channel: channelId })
   
-  //count likes on all videos
+  //count likes on all videos uploaded by one channel
   const totalLikes = await Like.countDocuments({//For detailed info/explanation see below
     video: { $in: await Video.find({ owner: channelId }).distinct("_id") },
   })

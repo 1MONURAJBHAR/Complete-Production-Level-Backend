@@ -10,17 +10,45 @@ const getVideoComments = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const { page = 1, limit = 10 } = req.query;
 
-  if (!mongoose.Types.ObjectId.isValid(videoId)) {   //check wheather the videoId is valid mongoose object id or  not
-    throw new ApiError(400,"Invalid video ID")
+  if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    //check wheather the videoId is valid mongoose object id or  not
+    throw new ApiError(400, "Invalid video ID");
   }
 
+  // console.log(videoId);
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /**Comment.aggregatePaginate() (from mongoose-aggregate-paginate-v2) expects:
+A Mongoose aggregate object.
+The documents it sees must match the query.
+Right now, your $match is:
+{
+  video: videoId
+}
+The problem is likely that videoId is a string from req.params, but in MongoDB, the video field in your Comment documents is likely stored as an ObjectId.
+
+In MongoDB:
+// Wrong: matching ObjectId with string won't work
+{ video: "64f5..." }<------
+// Correct: convert string to ObjectId**************************
+{ video: new mongoose.Types.ObjectId(videoId) }<-------
+So your $match is probably not matching anything, which is why totalDocs is 0. */
+/********************************************************************************************************************************************* */
+  /**Change your $match stage to:
+{
+  $match: {
+    video: new mongoose.Types.ObjectId(videoId)
+  }
+}
+This ensures the string from the request is converted to a proper ObjectId to match your documents. */
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   const aggregateQuery = Comment.aggregate([
     //Runs a MongoDB aggregation pipeline on the Comment collection.
     {
-      $match: {
+      $match: {  /// new mongoose.Types.ObjectId(videoId)=====> depricated but still working,so its fine.
         //this will find inside the "comments collection"to that comment document whose (video: videoId) matches to this videoId.
         //  And will return to that single comment document for next stage, for the next stage this single comment document will be treated as original document.
-        video: videoId, //hame bahut saare comment documents milenge comment collection ke andar jinki video field ki id same hogi videoId se, but owner id har ek document ki different hogi because,
+        video: new mongoose.Types.ObjectId(videoId), //hame bahut saare comment documents milenge comment collection ke andar jinki video field ki id same hogi videoId se, but owner id har ek document ki different hogi because,
         // same video per bahut log comment kar sakte hai
       },
     },
@@ -54,15 +82,19 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
   const options = {
     page: parseInt(page),
-    limit: parseInt(limit)
+    limit: parseInt(limit),
   };
 
-  const paginatedComments = await Comment.aggregatePaginate(aggregateQuery, options)
-  
+  const paginatedComments = await Comment.aggregatePaginate(
+    aggregateQuery,
+    options
+  );
+
   return res
     .status(200)
-    .json(new ApiResponce(200, paginatedComments, "Comments fetched successfully"))
-  
+    .json(
+      new ApiResponce(200, paginatedComments, "Comments fetched successfully")
+    );
 });
 
 // ADD a comment to a video
@@ -99,17 +131,18 @@ const updateComment = asyncHandler(async (req, res) => {
   const { content } = req.body;
 
   if (!content) {
-    throw new ApiError(400, "Comment content is required")
+    throw new ApiError(400, "Comment content is required");
   }
   if (!mongoose.Types.ObjectId.isValid(commentId)) {
-    throw new ApiError(400, "Invalid comment ID")
+    throw new ApiError(400, "Invalid comment ID");
   }
 
+  //Here in this method no need to convert "commentId string--->68d772b4369bf1acfe34a843" into an ObjectId,it works well with string
+  //Instead in aggregate method while using "$match" pipeline, we have to convert the "commentId string--->68d772b4369bf1acfe34a843" into an ObjectId with this method ---> new mongoose.Types.ObjectId(CommentId),  o/p -->ObjectId('68d772b4369bf1acfe34a843')
   const comment = await Comment.findOneAndUpdate(
-    { _id: commentId, owner: req.user?._id },  //only user can update
+    { _id: commentId, owner: req.user?._id }, //only user can update
     { content },
     { new: true }
-  
   );
 
   if (!comment) {
@@ -118,9 +151,7 @@ const updateComment = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponce(200, comment, "Comment updated successfully"))
-  
-
+    .json(new ApiResponce(200, comment, "Comment updated successfully"));
 });
 
 
@@ -139,12 +170,12 @@ const deleteComment = asyncHandler(async (req, res) => {
     owner: req.user?._id, // only owner can delete or { _id: commentId, owner: req.user._id } → ensures the logged-in user is the owner of the comment before deleting.
   });
 
-  if (!comment) {
+  if (!comment) {     //This comment will contain the deleted document
     //The comment variable will contain the deleted document (or null if no match is found).
     throw new ApiError(404,"Comment not found or you are not the owner")
   }
 
-  return res
+  return res   //returning the deleted document in ApiResponce,although no need of it.
     .status(200)
     .json(new ApiResponce(200, comment, "Comment deleted successfully"))
   
@@ -155,7 +186,7 @@ export { getVideoComments, addComment, updateComment, deleteComment };
 
 
 
-  
+
 /**Filter: { _id: commentId, owner: req.user._id }
 _id: commentId → Find the comment with the specific ID.
 owner: req.user._id → Only match if the logged-in user (req.user._id) is the owner of the comment.
