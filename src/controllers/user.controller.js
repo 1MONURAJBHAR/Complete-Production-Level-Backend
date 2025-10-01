@@ -570,6 +570,7 @@ export {
   updateUserCoverimage,
   getUserChannelProfile,
   getWatchHistory,
+  generateAccessAndRefreshTokens,
 };
   
 
