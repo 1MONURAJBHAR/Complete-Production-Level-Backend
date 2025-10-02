@@ -1,10 +1,12 @@
 {
-  "name": "monu-backend",
+  "name": "project-videotube-backend",
   "version": "1.0.0",
-  "description": "a backend with monu",
+  "description": "Backend API for video-sharing platform",
   "keywords": [
     "javascript",
-    "backend"
+    "JWT Authentication",
+    "file handling",
+    "aggregation pipelines"
   ],
   "license": "ISC",
   "author": "Monu Rajbhar",
