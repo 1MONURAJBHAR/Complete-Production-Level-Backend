@@ -1,7 +1,7 @@
 
 # 📝 Product Requirements Document (PRD)
 
-## Project VideoTube Backend
+## 1. Project VideoTube Backend
 
 **Product Name:** VideoTube Backend Project
 **Version:** 1.0.0  
@@ -57,7 +57,7 @@
 
 ---
 
-## 🛠 Tech Stack & Libraries
+## 4. 🛠 Tech Stack & Libraries
 
 * **Backend:** Node.js, Express.js
 * **Database:** MongoDB with Mongoose ODM
@@ -68,9 +68,9 @@
 
 ---
 
-### 4. Technical Specifications
+### 5. Technical Specifications
 
-#### 4.1 API Endpoints Structure
+####  API Endpoints Structure
 
 **Users & Authentication** (`/api/v1/user/`)
 
