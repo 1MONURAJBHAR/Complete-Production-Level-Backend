@@ -69,8 +69,23 @@
 * **API Utilities:** `asyncHandler`, custom `ApiError` and `ApiResponse` classes
 
 ---
+### 5. Logger: Morgan + Winston Integration 
+- **Morgan:** Middleware to log incoming HTTP requests.
+- **Winston:** General-purpose logger to store logs with timestamps, levels, and optional JSON formatting.
 
-### 5. Technical Specifications
+- Logs all HTTP requests with method, URL, status, and response time.
+
+- Stores logs in JSON format, making them easy to parse and analyze.
+
+- Provides timestamps for every log entry.
+
+- Transports to server app.log file and console it to terminal
+
+
+
+
+---
+### 6. Technical Specifications
 
 ####  API Endpoints Structure
 
