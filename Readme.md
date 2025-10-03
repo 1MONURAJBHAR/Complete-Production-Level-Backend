@@ -3,6 +3,8 @@
 
 ## 1. Project VideoTube Backend
 
+[Model Link](https://app.eraser.io/workspace/qCBGPB0NpvSAjvnw1xe5?origin=)
+
 **Product Name:** VideoTube Backend Project
 **Version:** 1.0.0  
 **Product Type:** Backend API for video-sharing platform
@@ -142,5 +144,5 @@
 - `GET /` - System health status
 
 
-Here is the model link -->
-[Model Link](https://app.eraser.io/workspace/qCBGPB0NpvSAjvnw1xe5?origin=)
+
+
